@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tes Asosiasi Kata</title>
+
+<!--
+=====================================================================
+ IAT BIAS BERAT BADAN — jsPsych v8 + plugin iat-html
+ Versi jsPsych dari instrumen yang sama. Stimulus berupa KATA.
+
+ Pustaka yang dipakai (dimuat dari CDN jsDelivr):
+   jspsych 8.3.0
+   @jspsych/plugin-iat-html 2.1.0
+   @jspsych/plugin-html-keyboard-response 2.2.0
+   @jspsych/plugin-survey-html-form 2.1.0
+   @jspsych/plugin-instructions 2.1.0
+   @jspsych-contrib/plugin-pipe 0.6.0  (penyimpanan ke OSF lewat DataPipe)
+
+ SITASI (wajib dicantumkan di bab metode):
+   de Leeuw, J. R., Gilbert, R. A., & Luchterhandt, B. (2023). jsPsych:
+   Enabling an open-source collaborative ecosystem of behavioral
+   experiments. Journal of Open Source Software, 8(85), 5351.
+   https://doi.org/10.21105/joss.05351
+
+   Bila memakai DataPipe, sitir juga:
+   de Leeuw, J. R. (2024). DataPipe: Born-open data collection for online
+   experiments. Behavior Research Methods, 56(3), 2499-2506.
+   https://doi.org/10.3758/s13428-023-02161-x
+
+ ---------------------------------------------------------------------
+ CATATAN PENTING TENTANG WAKTU REAKSI
+ ---------------------------------------------------------------------
+ Plugin iat-html hanya mencatat latensi RESPONS PERTAMA pada kolom rt,
+ meskipun force_correct_key_press bernilai true. Padahal algoritma D
+ dengan penalti kesalahan bawaan (built-in error penalty) menuntut
+ latensi SAMPAI RESPONS BENAR.
+
+ Karena itu berkas ini mencatat DUA ukuran waktu:
+   rt_first   = latensi respons pertama (dari plugin)
+   rt         = latensi dari kata muncul sampai trial berakhir, yaitu
+                sampai tombol yang benar ditekan. Diukur sendiri lewat
+                performance.now() pada on_load dan on_finish.
+ Kolom rt inilah yang dipakai skrip R, sama seperti versi sebelumnya,
+ sehingga kedua versi instrumen menghasilkan skor D yang sebanding.
+ ---------------------------------------------------------------------
+
+ MENJALANKAN TANPA INTERNET (untuk lab):
+ Unduh lima berkas .js dari alamat CDN di bawah, simpan di folder yang
+ sama dengan berkas ini, lalu ganti setiap src="https://cdn..." menjadi
+ src="nama-berkas.js". Berkas jspsych.css juga perlu diunduh.
+=====================================================================
+-->
+
+<script src="https://cdn.jsdelivr.net/npm/jspsych@8.3.0/dist/index.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@jspsych/plugin-iat-html@2.1.0/dist/index.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@jspsych/plugin-html-keyboard-response@2.2.0/dist/index.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@jspsych/plugin-survey-html-form@2.1.0/dist/index.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@jspsych/plugin-instructions@2.1.0/dist/index.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@jspsych-contrib/plugin-pipe@0.6.0/dist/index.browser.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jspsych@8.3.0/css/jspsych.css">
+
+<style>
+  :root{ --target:#1f5fbf; --attr:#1a7f37; --err:#d0021b; --muted:#5f6368; }
+  body{ background:#fff; font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; }
+  .jspsych-content{ max-width:820px; }
+  .jspsych-content p, .jspsych-content li{ line-height:1.6; text-align:left; }
+  h1{ font-size:1.5rem; }
+  .note{ color:var(--muted); font-size:.92rem; }
+  label{ display:block; margin:14px 0 6px; font-weight:600; text-align:left; }
+  input,select{ font:inherit; padding:9px; border:1px solid #d9d9d6; border-radius:8px; width:100%; max-width:340px; }
+
+  /* label kategori kiri-kanan (ditulis ulang oleh on_load) */
+  #trial_left_align, #trial_right_align{ top:14% !important; }
+  #trial_left_align p, #trial_right_align p{
+    font-size:1.3rem; font-weight:700; line-height:1.5; text-align:center; margin:0; }
+  .keyhint{ display:block; font-size:.85rem; font-weight:400; color:var(--muted); margin-bottom:4px; }
+  .orword{ display:block; font-size:.95rem; font-weight:400; color:var(--muted); }
+  .cat-t{ color:var(--target); }
+  .cat-a{ color:var(--attr); }
+
+  /* stimulus */
+  #jspsych-iat-stim{ font-size:2.4rem; font-weight:700; }
+  #jspsych-iat-stim.s-t{ color:var(--target); text-transform:uppercase; letter-spacing:.04em; }
+  #jspsych-iat-stim.s-a{ color:var(--attr); text-transform:lowercase; }
+  #wrongImgID p{ font-size:.9rem; color:var(--muted); }
+</style>
+</head>
+<body></body>
+
+<script>
+/* =====================================================================
+   KONFIGURASI — bagian ini saja yang perlu Anda ubah
+   ===================================================================== */
+const CONFIG = {
+  studyName: "IAT_BiasBeratBadan_jsPsych_v1",
+
+  /* --- PENYIMPANAN DATA: pilih salah satu, atau keduanya ---
+     1) DataPipe -> OSF (DISARANKAN untuk penelitian).
+        Isi dengan experiment_id 12 karakter dari pipe.jspsych.org.
+        Data masuk ke komponen OSF yang bersifat privat secara bawaan.
+        Jangan lupa menyalakan "Enable data collection" di dasbor DataPipe.
+     2) Google Sheets lewat Apps Script. Isi URL yang berakhiran /exec.
+     Bila keduanya kosong, partisipan cukup mengunduh berkas CSV.         */
+  dataPipeId: "",
+  googleScriptURL: "",
+
+  /* --- SINKRONISASI DENGAN GOOGLE FORM ---
+     Tempel di sini POLA PREFILLED yang dicetak skrip buat_google_form.gs
+     pada Log eksekusi. Penanda __KODE__ di dalamnya JANGAN diubah:
+     program mengganti penanda itu dengan kode partisipan, sehingga
+     kolom kode di Google Form terisi otomatis dan tidak mungkin salah
+     ketik. Biarkan "" bila sinkronisasi otomatis tidak dipakai.       */
+  formURL: "",
+
+  /* Awalan kode bila partisipan membuka tautan tanpa ?id=.
+     Program akan membuat kode acak, mis. P-7K3QX9.                    */
+  kodeAwalan: "P-",
+
+  keyLeft: "e",
+  keyRight: "i",
+  iti: 250,                                   // jeda antar-trial (ms)
+
+  targetA: { label: "Gemuk",    words: ["gemuk","gendut","tambun","buncit","bulat"] },
+  targetB: { label: "Langsing", words: ["langsing","ramping","ideal","bugar","atletis"] },
+  attrNeg: { label: "Buruk",    words: ["buruk","jelek","keji","payah","busuk"] },
+  attrPos: { label: "Baik",     words: ["baik","bagus","indah","hebat","mulia"] },
+
+  // Versi alternatif atribut stereotip (Teachman & Brownell, 2001).
+  // Untuk memakainya, salin menggantikan attrNeg dan attrPos di atas.
+  attrAlt: {
+    neg: { label: "Malas", words: ["malas","lamban","lemah","pasif","loyo"] },
+    pos: { label: "Rajin", words: ["rajin","gesit","kuat","aktif","tekun"] }
+  },
+
+  // 20/20/20/40/40/20/40 = 200 trial (Nosek, Greenwald & Banaji, 2005)
+  nTrials: [20, 20, 20, 40, 40, 20, 40]
+};
+/* ===================================================================== */
+
+const A = "targetA", B = "targetB", N = "attrNeg", P = "attrPos";
+const isTarget = k => k === A || k === B;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+const params  = new URLSearchParams(location.search);
+
+/* Membuat kode partisipan acak bila tidak diberikan lewat ?id=.
+   Huruf dan angka yang mudah tertukar (0 O 1 I L) sengaja dibuang,
+   agar kode tetap terbaca benar bila harus disalin dengan tangan. */
+function kodeAcak(){
+  const abj = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+  let k = "";
+  const buf = new Uint8Array(6);
+  (window.crypto || window.msCrypto).getRandomValues(buf);
+  for (let i = 0; i < 6; i++) k += abj[buf[i] % abj.length];
+  return CONFIG.kodeAwalan + k;
+}
+const pick    = (v, allowed) => allowed.includes(v) ? v : allowed[Math.floor(Math.random()*allowed.length)];
+const KODE    = (params.get("id") || "").replace(/[^\w\-]/g, "_") || kodeAcak();
+const ORDER   = pick((params.get("order")||"").toUpperCase(), ["A","B"]);
+const SIDE    = pick(params.get("side")||"", ["1","2"]);
+const VERSION = ORDER + SIDE;
+
+/* ---------- jsPsych ---------- */
+const jsPsych = initJsPsych({
+  display_element: document.body,
+  on_finish: finish
+});
+
+/* ---------- util daftar stimulus ---------- */
+function shuffle(a){ a = a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+
+function balancedList(cats, n){
+  const out = [], perCat = Math.ceil(n / cats.length);
+  cats.forEach(k=>{
+    let pool = [];
+    while(pool.length < perCat) pool = pool.concat(shuffle(CONFIG[k].words));
+    pool.slice(0, perCat).forEach(w => out.push({ word:w, cat:k }));
+  });
+  let res, tries = 0;
+  do { res = shuffle(out).slice(0, n); tries++; }
+  while (tries < 500 && res.some((x,i)=> i>0 && x.word === res[i-1].word));
+  return res;
+}
+function alternatingList(tCats, aCats, n){
+  const t = balancedList(tCats, Math.ceil(n/2));
+  const a = balancedList(aCats, Math.floor(n/2));
+  const out = [];
+  for (let i=0;i<n;i++) out.push(i%2===0 ? t[i/2|0] : a[i/2|0]);
+  return out;
+}
+
+/* ---------- susunan 7 blok ----------
+   order "A" : blok 3-4 kompatibel (Gemuk sekunci dengan Buruk)
+   order "B" : blok 3-4 inkompatibel
+   side  "1" : Buruk di kiri;  side "2" : Buruk di kanan
+   Blok 5 membalik kategori TARGET (Nosek dkk., 2007, Tabel 6.1).      */
+function buildBlocks(){
+  const other = s => s === "L" ? "R" : "L";
+  const negSide = SIDE === "1" ? "L" : "R";
+  const at = negSide === "L" ? { L:[N], R:[P] } : { L:[P], R:[N] };
+  const aSideFirst = ORDER === "A" ? negSide : other(negSide);
+  const tFirst  = aSideFirst === "L" ? { L:[A], R:[B] } : { L:[B], R:[A] };
+  const tSecond = { L: tFirst.R, R: tFirst.L };
+  const pair = tt => ({ L: tt.L.concat(at.L), R: tt.R.concat(at.R) });
+  const pairingOf = s =>
+    (s.L.includes(A) && s.L.includes(N)) || (s.R.includes(A) && s.R.includes(N))
+      ? "compatible" : "incompatible";
+  const n = CONFIG.nTrials;
+  const bl = [
+    { block:1, kind:"target",    sides:tFirst,       practice:true,  list:()=>balancedList([A,B], n[0]) },
+    { block:2, kind:"attribute", sides:at,           practice:true,  list:()=>balancedList([N,P], n[1]) },
+    { block:3, kind:"combined",  sides:pair(tFirst), practice:true,  list:()=>alternatingList([A,B],[N,P], n[2]) },
+    { block:4, kind:"combined",  sides:pair(tFirst), practice:false, list:()=>alternatingList([A,B],[N,P], n[3]) },
+    { block:5, kind:"target",    sides:tSecond,      practice:true,  list:()=>balancedList([A,B], n[4]) },
+    { block:6, kind:"combined",  sides:pair(tSecond),practice:true,  list:()=>alternatingList([A,B],[N,P], n[5]) },
+    { block:7, kind:"combined",  sides:pair(tSecond),practice:false, list:()=>alternatingList([A,B],[N,P], n[6]) }
+  ];
+  bl.forEach(b => b.pairing = b.kind === "combined" ? pairingOf(b.sides) : "single");
+  return bl;
+}
+
+/* ---------- label kategori dalam bahasa Indonesia ----------
+   Plugin menulis "Press e for: ..." dalam bahasa Inggris dan teks itu
+   tidak dapat diubah lewat parameter, jadi kita tulis ulang isinya
+   pada on_load.                                                        */
+function sideHTML(keys, keyName){
+  const parts = keys.map(k => {
+    const t = isTarget(k);
+    const txt = t ? CONFIG[k].label.toUpperCase() : CONFIG[k].label.toLowerCase();
+    return `<span class="${t ? "cat-t" : "cat-a"}">${esc(txt)}</span>`;
+  });
+  return `<p><span class="keyhint">tekan "${keyName.toUpperCase()}"</span>${
+    parts.join('<span class="orword">atau</span>')}</p>`;
+}
+function relabel(sides){
+  const l = document.getElementById("trial_left_align");
+  const r = document.getElementById("trial_right_align");
+  if (l) l.innerHTML = sideHTML(sides.L, CONFIG.keyLeft);
+  if (r) r.innerHTML = sideHTML(sides.R, CONFIG.keyRight);
+}
+
+/* ---------- satu trial IAT ---------- */
+function iatTrial(b, item, idx, total){
+  const onLeft  = b.sides.L.includes(item.cat);
+  const t       = isTarget(item.cat);
+  const shown   = t ? item.word.toUpperCase() : item.word.toLowerCase();
+  return {
+    type: jsPsychIatHtml,
+    stimulus: `<span class="${t ? "s-t" : "s-a"}" id="x">${esc(shown)}</span>`,
+    stim_key_association: onLeft ? "left" : "right",
+    left_category_key:  CONFIG.keyLeft,
+    right_category_key: CONFIG.keyRight,
+    left_category_label:  b.sides.L.map(k => CONFIG[k].label),
+    right_category_label: b.sides.R.map(k => CONFIG[k].label),
+    display_feedback: true,
+    force_correct_key_press: true,
+    response_ends_trial: true,
+    html_when_wrong: '<span style="color:#d0021b;font-size:72px;font-weight:900">X</span>',
+    bottom_instructions: `<p>${idx+1} / ${total} &nbsp;&middot;&nbsp; bila salah, muncul X merah: tekan tombol yang benar untuk melanjutkan.</p>`,
+    post_trial_gap: CONFIG.iti,
+    on_load: function(){
+      relabel(b.sides);
+      // penanda warna & huruf besar/kecil pada stimulus
+      const st = document.getElementById("jspsych-iat-stim");
+      if (st) st.classList.add(t ? "s-t" : "s-a");
+      // titik awal pengukuran latensi sampai respons BENAR
+      window.__t0 = performance.now();
+    },
+    data: {
+      task: "iat",
+      block: b.block, block_kind: b.kind,
+      practice: b.practice ? 1 : 0, pairing: b.pairing,
+      left_label:  b.sides.L.map(k => CONFIG[k].label).join("+"),
+      right_label: b.sides.R.map(k => CONFIG[k].label).join("+"),
+      trial_in_block: idx + 1,
+      word: item.word,
+      category: CONFIG[item.cat].label,
+      category_code: item.cat,
+      stim_type: t ? "target" : "attribute",
+      correct_key: onLeft ? CONFIG.keyLeft : CONFIG.keyRight
+    },
+    on_finish: function(d){
+      d.rt_first = d.rt;                                        // respons pertama
+      d.rt = Math.round(performance.now() - window.__t0);       // sampai respons benar
+      d.error = d.correct ? 0 : 1;                              // 1 = respons pertama salah
+    }
+  };
+}
+
+/* ---------- layar-layar ---------- */
+const consent = {
+  type: jsPsychHtmlKeyboardResponse,
+  choices: [" "],
+  stimulus: `
+    <h1>Lembar Persetujuan (Informed Consent)</h1>
+    <p>Anda diundang mengikuti penelitian tentang cara orang mengelompokkan kata-kata yang berkaitan dengan tubuh.
+       Tugas berlangsung sekitar <b>12 menit</b> dan harus dikerjakan di <b>laptop/komputer dengan keyboard</b>.</p>
+    <p>Beberapa kata dalam tugas ini berkaitan dengan bentuk tubuh dan penilaian terhadapnya. Jika Anda merasa tidak
+       nyaman, Anda boleh berhenti kapan saja tanpa konsekuensi apa pun dengan menutup halaman ini.</p>
+    <p>Data Anda bersifat anonim dan hanya digunakan untuk kepentingan penelitian. Hasil tes ini <b>bukan</b> alat
+       diagnosis dan tidak menggambarkan nilai diri Anda.</p>
+    <p class="note">Kontak peneliti: [nama peneliti] – [email] – [program studi &amp; universitas]<br>
+       Penelitian ini telah mendapat persetujuan etik [nomor ethical clearance].</p>
+    <p><b>Tekan SPASI bila Anda setuju untuk berpartisipasi.</b></p>`
+};
+
+const demografi = {
+  type: jsPsychSurveyHtmlForm,
+  preamble: "<h1>Data Partisipan</h1>",
+  html: `
+    <label for="pid">Kode partisipan</label>
+    <input name="pid" id="pid" required readonly value="${esc(KODE)}"
+           style="background:#f2f2f0;font-weight:700;letter-spacing:.06em">
+    <p class="note">Kode ini dibuat otomatis dan akan terbawa sendiri ke kuesioner di akhir tugas,
+       sehingga tidak mungkin salah ketik. Anda tidak perlu mencatatnya.</p>
+    <label for="age">Usia (tahun)</label>
+    <input name="age" id="age" type="number" min="15" max="80" required>
+    <label for="gender">Jenis kelamin</label>
+    <select name="gender" id="gender" required>
+      <option value="">– pilih –</option><option>Perempuan</option><option>Laki-laki</option>
+      <option>Tidak ingin menyebutkan</option></select>
+    <label for="prov">Provinsi tempat tinggal</label>
+    <input name="prov" id="prov" required placeholder="mis. Sulawesi Selatan">
+    <p class="note">Provinsi dicatat untuk memeriksa apakah kata-kata dalam tes dipahami merata di luar Jawa.</p>`,
+  button_label: "Lanjut",
+  on_finish: function(d){
+    const r = d.response;
+    jsPsych.data.addProperties({
+      study: CONFIG.studyName,
+      participant_id: KODE,
+      age: r.age, gender: r.gender, province: r.prov,
+      order: ORDER, side: SIDE, version: VERSION
+    });
+  }
+};
+
+function daftarKata(){
+  const up = k => `<li><b class="cat-t">${esc(CONFIG[k].label.toUpperCase())}</b>: ${
+    CONFIG[k].words.map(w => esc(w.toUpperCase())).join(", ")}</li>`;
+  const lo = k => `<li><b class="cat-a">${esc(CONFIG[k].label.toLowerCase())}</b>: ${
+    CONFIG[k].words.map(esc).join(", ")}</li>`;
+  return up(A) + up(B) + lo(N) + lo(P);
+}
+
+const petunjuk = {
+  type: jsPsychInstructions,
+  key_forward: " ",
+  show_clickable_nav: true,
+  button_label_next: "Lanjut",
+  button_label_previous: "Kembali",
+  pages: [`
+    <h1>Petunjuk</h1>
+    <p>Anda akan mengelompokkan kata ke dalam kategori secepat mungkin. Berikut kategori dan kata-katanya:</p>
+    <ul>${daftarKata()}</ul>
+    <p>Kata tentang <b class="cat-t">bentuk tubuh</b> selalu ditulis huruf besar, kata sifat
+       <b class="cat-a">umum</b> selalu huruf kecil.</p>`, `
+    <h1>Cara menjawab</h1>
+    <p>Letakkan jari telunjuk kiri di tombol <b>${CONFIG.keyLeft.toUpperCase()}</b> dan telunjuk kanan di tombol
+       <b>${CONFIG.keyRight.toUpperCase()}</b>.</p>
+    <p>Kata muncul satu per satu di tengah layar. Jawablah <b>secepat mungkin</b> dengan tetap berusaha benar.
+       Jika salah, muncul <span style="color:#d0021b;font-weight:700">X</span> merah dan Anda harus menekan tombol
+       yang benar untuk melanjutkan.</p>
+    <p>Ada 7 bagian, seluruhnya sekitar 12 menit. Pastikan tidak ada gangguan selama pengerjaan.</p>`]
+};
+
+function instruksiBlok(b, no){
+  const names = s => s.map(k => {
+    const t = isTarget(k);
+    return `<b class="${t ? "cat-t" : "cat-a"}">${esc(t ? CONFIG[k].label.toUpperCase() : CONFIG[k].label.toLowerCase())}</b>`;
+  }).join(" atau ");
+  return {
+    type: jsPsychHtmlKeyboardResponse,
+    choices: [" "],
+    stimulus: `
+      <p><b>Bagian ${no} dari 7</b></p>
+      <p>Tekan <b>${CONFIG.keyLeft.toUpperCase()}</b> untuk kata yang termasuk ${names(b.sides.L)}.<br>
+         Tekan <b>${CONFIG.keyRight.toUpperCase()}</b> untuk kata yang termasuk ${names(b.sides.R)}.</p>
+      ${b.block === 5 ? "<p><b>Perhatikan: posisi kategori bentuk tubuh sekarang bertukar.</b></p>" : ""}
+      <p>Tekan <b>SPASI</b> untuk mulai.</p>`,
+    post_trial_gap: 400
+  };
+}
+
+/* ---------- menyusun timeline ---------- */
+const timeline = [consent, demografi, petunjuk];
+buildBlocks().forEach((b, i) => {
+  timeline.push(instruksiBlok(b, i + 1));
+  const items = b.list();
+  items.forEach((item, j) => timeline.push(iatTrial(b, item, j, items.length)));
+});
+// Penyimpanan ke OSF lewat DataPipe (bila experiment_id diisi)
+if (CONFIG.dataPipeId) {
+  timeline.push({
+    type: jsPsychPipe,
+    action: "save",
+    experiment_id: CONFIG.dataPipeId,
+    filename: () => {
+      const v = jsPsych.data.get().values()[0] || {};
+      return `${CONFIG.studyName}_${v.participant_id || "anon"}_${VERSION}_${Date.now()}.csv`;
+    },
+    data_string: () => toCSV(rows()),
+    wait_message: "<p>Menyimpan data. Mohon jangan tutup halaman ini.</p>"
+  });
+}
+timeline.push({
+  type: jsPsychHtmlKeyboardResponse,
+  choices: "NO_KEYS", trial_duration: 10,
+  stimulus: "<p>Menyimpan data…</p>"
+});
+
+/* ---------- penyimpanan data ---------- */
+function rows(){
+  return jsPsych.data.get().filter({ task: "iat" }).values().map(d => ({
+    study: d.study, participant_id: d.participant_id, age: d.age, gender: d.gender,
+    province: d.province, order: d.order, side: d.side, version: d.version,
+    block: d.block, block_kind: d.block_kind, practice: d.practice, pairing: d.pairing,
+    left_label: d.left_label, right_label: d.right_label,
+    trial: d.trial_in_block, stimulus: d.word, category: d.category,
+    category_code: d.category_code, stim_type: d.stim_type,
+    correct_key: d.correct_key, first_key: d.response,
+    error: d.error, rt_first: d.rt_first, rt: d.rt,
+    timestamp: new Date(d.time_elapsed).toISOString()
+  }));
+}
+function toCSV(rs){
+  const cols = Object.keys(rs[0]);
+  const q = v => { const s = String(v ?? ""); return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s; };
+  return [cols.join(",")].concat(rs.map(r => cols.map(c => q(r[c])).join(","))).join("\n");
+}
+function downloadCSV(){
+  const pid = jsPsych.data.get().values()[0]?.participant_id || "anon";
+  const blob = new Blob([toCSV(rows())], { type:"text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${CONFIG.studyName}_${pid}_${Date.now()}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+/* Pengiriman ke Google Sheets memakai mode "no-cors", sehingga browser
+   TIDAK dapat membaca balasan server. Artinya keberhasilan tidak dapat
+   dipastikan dari sisi partisipan: fungsi ini hanya melaporkan bahwa
+   permintaan berhasil DIKIRIM, bukan bahwa datanya tersimpan. Karena
+   itu DataPipe dipakai sebagai jalur utama yang statusnya terbaca, dan
+   Google Sheets sebagai cadangan. Periksa Spreadsheet secara berkala
+   selama pengumpulan data. */
+async function sendToGoogle(){
+  if (!CONFIG.googleScriptURL) return "skip";
+  const v = jsPsych.data.get().values()[0] || {};
+  try {
+    await fetch(CONFIG.googleScriptURL, {
+      method: "POST", mode: "no-cors",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        session: {
+          participant_id: v.participant_id, age: v.age, gender: v.gender,
+          province: v.province, order: ORDER, side: SIDE, version: VERSION,
+          start_time: new Date(Date.now() - jsPsych.getTotalTime()).toISOString(),
+          end_time: new Date().toISOString(),
+          screen: screen.width + "x" + screen.height, user_agent: navigator.userAgent
+        },
+        rows: rows()
+      })
+    });
+    return "terkirim";          // dikirim, belum tentu tersimpan
+  } catch(e) { return "gagal"; }
+}
+
+async function finish(){
+  // Jalur 1: DataPipe ke OSF. Statusnya dapat dibaca, jadi inilah
+  // satu-satunya jalur yang keberhasilannya benar-benar terpastikan.
+  const pipeDipakai = !!CONFIG.dataPipeId;
+  const pipeOk = pipeDipakai &&
+    jsPsych.data.get().filter({ trial_type: "pipe" }).values()
+      .some(d => d.success === true);
+
+  // Jalur 2: Google Sheets. Hanya dapat dipastikan "terkirim".
+  const sheetStatus = await sendToGoogle();          // skip | terkirim | gagal
+
+  // Terpastikan hanya bila DataPipe berhasil.
+  const aman = pipeOk;
+  // Ada setidaknya satu jalur yang tidak melaporkan kegagalan.
+  const adaJalur = pipeOk || sheetStatus === "terkirim";
+
+  let msg, nadaMsg;
+  if (aman) {
+    msg = "Data Anda sudah tersimpan dan terkirim ke peneliti.";
+    nadaMsg = "ok";
+  } else if (adaJalur) {
+    msg = "Data Anda sudah dikirim. Sebagai cadangan, Anda dapat mengunduh " +
+          "berkas datanya dengan tombol di bawah.";
+    nadaMsg = "ok";
+  } else if (!pipeDipakai && sheetStatus === "skip") {
+    msg = "Silakan klik tombol di bawah untuk mengunduh berkas data, " +
+          "lalu kirimkan kepada peneliti.";
+    nadaMsg = "manual";
+  } else {
+    msg = "Pengiriman otomatis gagal.";
+    nadaMsg = "gagal";
+  }
+
+  // Catatan untuk peneliti, terbaca di konsol peramban (tekan F12).
+  console.log("[IAT] status penyimpanan |",
+    "DataPipe:", pipeDipakai ? (pipeOk ? "BERHASIL" : "GAGAL") : "tidak dipakai",
+    "| Google Sheets:", sheetStatus,
+    "| kode:", KODE);
+  if (!pipeDipakai && sheetStatus === "skip")
+    console.warn("[IAT] Tidak ada jalur penyimpanan yang diatur. Isi " +
+      "CONFIG.dataPipeId dan/atau CONFIG.googleScriptURL sebelum pengambilan data.");
+
+  const blokGagal = (nadaMsg === "gagal") ? `
+      <div style="border:2px solid var(--err);border-radius:12px;padding:18px;margin:18px 0;background:#fdf1f1">
+        <p style="margin:0 0 10px"><b>Data Anda belum tersimpan.</b> Mohon klik tombol
+           <b>Unduh file data</b> di bawah, lalu kirimkan berkasnya kepada peneliti di
+           alamat yang tertera pada lembar persetujuan. Mohon jangan menutup halaman ini
+           sebelum berkasnya terunduh.</p>
+        <p class="note" style="margin:0">Kode Anda: <b style="letter-spacing:.06em">${esc(KODE)}</b></p>
+      </div>` : "";
+
+  // Tautan kuesioner dengan kode partisipan sudah terisi otomatis
+  const formLink = CONFIG.formURL
+    ? CONFIG.formURL.replace("__KODE__", encodeURIComponent(KODE))
+    : "";
+  const blokForm = formLink ? `
+      <div style="border:2px solid var(--accent);border-radius:12px;padding:20px;margin:22px 0;background:#f4f8ff">
+        <h2 style="margin:0 0 10px;font-size:1.15rem">Satu langkah lagi</h2>
+        <p style="margin:0 0 14px">Silakan lanjut mengisi kuesioner singkat. Kode Anda sudah terisi
+           otomatis, jadi Anda tidak perlu mengetik apa pun.</p>
+        <p style="margin:0 0 10px"><a href="${formLink}" target="_blank" rel="noopener"
+           class="jspsych-btn" style="display:inline-block;text-decoration:none;background:var(--accent);color:#fff">
+           Buka kuesioner sekarang</a></p>
+        <p class="note" style="margin:10px 0 0">Bila tombol tidak berfungsi, buka tautan kuesioner
+           dari peneliti lalu isikan kode ini secara manual:
+           <b style="letter-spacing:.06em">${esc(KODE)}</b></p>
+      </div>` : `
+      <p class="note">Kode partisipan Anda: <b style="letter-spacing:.06em">${esc(KODE)}</b>.
+         Simpan kode ini bila peneliti memintanya.</p>`;
+
+  document.body.innerHTML = `
+    <div class="jspsych-content-wrapper"><div class="jspsych-content">
+      <h1>Terima kasih!</h1>
+      <p>${msg}</p>
+      ${blokGagal}
+      ${blokForm}
+      <p><button id="dl" class="jspsych-btn">Unduh file data (CSV)</button></p>
+      <h1 style="font-size:1.2rem;margin-top:28px">Penjelasan penelitian (debriefing)</h1>
+      <p>Tugas tadi adalah <i>Implicit Association Test</i> (IAT), yang mengukur seberapa cepat seseorang mengaitkan
+         karakteristik tubuh tertentu dengan penilaian baik atau buruk. Kecepatan ini dipengaruhi banyak hal, termasuk
+         budaya dan media di sekitar kita, sehingga hasilnya tidak menunjukkan bahwa Anda "berprasangka" atau bahwa ada
+         yang salah dengan tubuh Anda.</p>
+      <p>Jika tugas ini memunculkan perasaan tidak nyaman, Anda dapat menghubungi layanan konseling kampus atau peneliti
+         di kontak berikut: [kontak peneliti / layanan konseling].</p>
+    </div></div>`;
+  document.getElementById("dl").onclick = downloadCSV;
+}
+
+/* ---------- jalan ---------- */
+if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+  document.body.innerHTML = `<div class="jspsych-content-wrapper"><div class="jspsych-content">
+    <h1>Gunakan laptop/komputer</h1>
+    <p>Tugas ini memerlukan keyboard fisik. Silakan buka tautan ini di laptop atau komputer.</p></div></div>`;
+} else {
+  jsPsych.run(timeline);
+}
+</script>
+</html>
