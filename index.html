@@ -104,7 +104,7 @@ const CONFIG = {
      2) Google Sheets lewat Apps Script. Isi URL yang berakhiran /exec.
      Bila keduanya kosong, partisipan cukup mengunduh berkas CSV.         */
   dataPipeId: "",
-  googleScriptURL: "",
+  googleScriptURL: "https://script.google.com/macros/s/AKfycbwR3x2zUSN34o6RK0vwldUpf0_E0gxEq81UMKaUBd_KKk4KJxITnbBpVB_sPLB1wYjp/exec",
 
   /* --- SINKRONISASI DENGAN GOOGLE FORM ---
      Tempel di sini POLA PREFILLED yang dicetak skrip buat_google_form.gs
@@ -437,33 +437,36 @@ function downloadCSV(){
   a.download = `${CONFIG.studyName}_${pid}_${Date.now()}.csv`;
   document.body.appendChild(a); a.click(); a.remove();
 }
-/* Pengiriman ke Google Sheets memakai mode "no-cors", sehingga browser
-   TIDAK dapat membaca balasan server. Artinya keberhasilan tidak dapat
-   dipastikan dari sisi partisipan: fungsi ini hanya melaporkan bahwa
-   permintaan berhasil DIKIRIM, bukan bahwa datanya tersimpan. Karena
-   itu DataPipe dipakai sebagai jalur utama yang statusnya terbaca, dan
-   Google Sheets sebagai cadangan. Periksa Spreadsheet secara berkala
-   selama pengumpulan data. */
+/* Pengiriman ke Google Sheets. Percobaan pertama memakai mode biasa agar
+   balasan server DAPAT dibaca: bila server menjawab {"status":"ok"}, data
+   benar-benar tersimpan ("tersimpan"). Bila peramban menolak membaca
+   balasan, kiriman diulang secara "buta" (no-cors) dan statusnya hanya
+   "terkirim". Pengulangan itu aman karena Apps Script menyimpan satu kode
+   partisipan sekali saja. */
 async function sendToGoogle(){
   if (!CONFIG.googleScriptURL) return "skip";
   const v = jsPsych.data.get().values()[0] || {};
+  const body = JSON.stringify({
+    session: {
+      participant_id: v.participant_id, age: v.age, gender: v.gender,
+      province: v.province, order: ORDER, side: SIDE, version: VERSION,
+      start_time: new Date(Date.now() - jsPsych.getTotalTime()).toISOString(),
+      end_time: new Date().toISOString(),
+      screen: screen.width + "x" + screen.height, user_agent: navigator.userAgent
+    },
+    rows: rows()
+  });
+  const hdr = { "Content-Type": "text/plain;charset=utf-8" };
   try {
-    await fetch(CONFIG.googleScriptURL, {
-      method: "POST", mode: "no-cors",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({
-        session: {
-          participant_id: v.participant_id, age: v.age, gender: v.gender,
-          province: v.province, order: ORDER, side: SIDE, version: VERSION,
-          start_time: new Date(Date.now() - jsPsych.getTotalTime()).toISOString(),
-          end_time: new Date().toISOString(),
-          screen: screen.width + "x" + screen.height, user_agent: navigator.userAgent
-        },
-        rows: rows()
-      })
-    });
-    return "terkirim";          // dikirim, belum tentu tersimpan
-  } catch(e) { return "gagal"; }
+    const r = await fetch(CONFIG.googleScriptURL, { method: "POST", headers: hdr, body, redirect: "follow" });
+    const j = await r.json();
+    return (j && j.status === "ok") ? "tersimpan" : "gagal";
+  } catch(e1) {
+    try {
+      await fetch(CONFIG.googleScriptURL, { method: "POST", mode: "no-cors", headers: hdr, body });
+      return "terkirim";        // dikirim, belum tentu tersimpan
+    } catch(e2) { return "gagal"; }
+  }
 }
 
 async function finish(){
@@ -474,13 +477,14 @@ async function finish(){
     jsPsych.data.get().filter({ trial_type: "pipe" }).values()
       .some(d => d.success === true);
 
-  // Jalur 2: Google Sheets. Hanya dapat dipastikan "terkirim".
-  const sheetStatus = await sendToGoogle();          // skip | terkirim | gagal
+  // Jalur 2: Google Sheets. "tersimpan" = server membalas ok;
+  // "terkirim" = dikirim tanpa bisa membaca balasan.
+  const sheetStatus = await sendToGoogle();   // skip | tersimpan | terkirim | gagal
 
-  // Terpastikan hanya bila DataPipe berhasil.
-  const aman = pipeOk;
+  // Terpastikan bila salah satu jalur melaporkan berhasil.
+  const aman = pipeOk || sheetStatus === "tersimpan";
   // Ada setidaknya satu jalur yang tidak melaporkan kegagalan.
-  const adaJalur = pipeOk || sheetStatus === "terkirim";
+  const adaJalur = aman || sheetStatus === "terkirim";
 
   let msg, nadaMsg;
   if (aman) {
