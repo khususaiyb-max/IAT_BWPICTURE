@@ -103,7 +103,7 @@ const CONFIG = {
         Jangan lupa menyalakan "Enable data collection" di dasbor DataPipe.
      2) Google Sheets lewat Apps Script. Isi URL yang berakhiran /exec.
      Bila keduanya kosong, partisipan cukup mengunduh berkas CSV.         */
-  dataPipeId: "Ux7ZQHWULJ74",
+  dataPipeId: "",
   googleScriptURL: "",
 
   /* 3) Google Form sebagai penerima data (disarankan bila Apps Script
@@ -134,8 +134,8 @@ const CONFIG = {
 
   targetA: { label: "Gemuk",    words: ["gemuk","gendut","tambun","buncit","bulat"] },
   targetB: { label: "Langsing", words: ["langsing","ramping","ideal","bugar","atletis"] },
-  attrNeg: { label: "Buruk",    words: ["buruk","jelek","keji","payah","busuk"] },
-  attrPos: { label: "Baik",     words: ["baik","bagus","indah","hebat","mulia"] },
+  attrNeg: { label: "Buruk",    words: ["buruk","jelek","payah","menyebalkan","mengerikan"] },
+  attrPos: { label: "Baik",     words: ["baik","bagus","indah","hebat","menyenangkan"] },
 
   // Versi alternatif atribut stereotip (Teachman & Brownell, 2001).
   // Untuk memakainya, salin menggantikan attrNeg dan attrPos di atas.
@@ -574,9 +574,9 @@ async function finish(){
         <p style="margin:0 0 10px"><a href="${formLink}" target="_blank" rel="noopener"
            class="jspsych-btn" style="display:inline-block;text-decoration:none;background:var(--accent);color:#fff">
            Buka kuesioner sekarang</a></p>
-        <p class="note" style="margin:10px 0 0">Bila tombol tidak berfungsi, buka tautan kuesioner
-           dari peneliti lalu isikan kode ini secara manual:
-           <b style="letter-spacing:.06em">${esc(KODE)}</b></p>
+        <p class="note" style="margin:10px 0 0">Bila tombol tidak berfungsi, salin tautan ini ke browser Anda:
+           <br><a href="${formLink}" target="_blank" rel="noopener" style="word-break:break-all">${esc(formLink)}</a>
+           <br>Jika kolom kode kosong, isi dengan: <b style="letter-spacing:.06em">${esc(KODE)}</b></p>
       </div>` : `
       <p class="note">Kode partisipan Anda: <b style="letter-spacing:.06em">${esc(KODE)}</b>.
          Simpan kode ini bila peneliti memintanya.</p>`;
