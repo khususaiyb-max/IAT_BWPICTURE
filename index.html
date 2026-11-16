@@ -119,6 +119,10 @@ const CONFIG = {
      program mengganti penanda itu dengan kode partisipan, sehingga
      kolom kode di Google Form terisi otomatis dan tidak mungkin salah
      ketik. Biarkan "" bila sinkronisasi otomatis tidak dipakai.       */
+  /* Tampilkan kotak "Satu langkah lagi" (tombol ke kuesioner) di halaman akhir?
+     false = hanya penjelasan penelitian (debriefing). */
+  tampilkanTautanKuesioner: true,
+
   formURL: {
     A: "https://docs.google.com/forms/d/e/1FAIpQLSfPDSXqTCLf3KZpkqsMYYRiEupN8FsePaOCJkp2LGptp14U2Q/viewform?usp=pp_url&entry.326577295=__KODE__",
     B: "https://docs.google.com/forms/d/e/1FAIpQLSfC7Hugpvh6vfqs9cmwU_1VMLZIcCCmKHB0WGUnXiOcC9P0-Q/viewform?usp=pp_url&entry.1020846415=__KODE__"
@@ -566,17 +570,16 @@ async function finish(){
   const formLink = formPola
     ? formPola.replace("__KODE__", encodeURIComponent(KODE))
     : "";
-  const blokForm = formLink ? `
-      <div style="border:2px solid var(--accent);border-radius:12px;padding:20px;margin:22px 0;background:#f4f8ff">
-        <h2 style="margin:0 0 10px;font-size:1.15rem">Satu langkah lagi</h2>
-        <p style="margin:0 0 14px">Silakan lanjut mengisi kuesioner singkat. Kode Anda sudah terisi
-           otomatis, jadi Anda tidak perlu mengetik apa pun.</p>
-        <p style="margin:0 0 10px"><a href="${formLink}" target="_blank" rel="noopener"
+  const blokForm = (CONFIG.tampilkanTautanKuesioner && formLink) ? `
+      <div style="border:1px solid #d9d9d6;border-radius:12px;padding:16px 20px;margin:22px 0;background:#f7f9fc">
+        <h2 style="margin:0 0 8px;font-size:1.05rem">Kuesioner penelitian</h2>
+        <p style="margin:0 0 12px">Jika Anda <b>belum</b> mengisi kuesioner penelitian ini, silakan isi melalui
+           tombol berikut (kode Anda sudah terisi otomatis). Jika Anda <b>sudah</b> mengisinya, Anda dapat
+           mengabaikan bagian ini.</p>
+        <p style="margin:0"><a href="${formLink}" target="_blank" rel="noopener"
            class="jspsych-btn" style="display:inline-block;text-decoration:none;background:var(--accent);color:#fff">
-           Buka kuesioner sekarang</a></p>
-        <p class="note" style="margin:10px 0 0">Bila tombol tidak berfungsi, salin tautan ini ke browser Anda:
-           <br><a href="${formLink}" target="_blank" rel="noopener" style="word-break:break-all">${esc(formLink)}</a>
-           <br>Jika kolom kode kosong, isi dengan: <b style="letter-spacing:.06em">${esc(KODE)}</b></p>
+           Buka kuesioner</a></p>
+        <p class="note" style="margin:10px 0 0">Kode Anda: <b style="letter-spacing:.06em">${esc(KODE)}</b></p>
       </div>` : `
       <p class="note">Kode partisipan Anda: <b style="letter-spacing:.06em">${esc(KODE)}</b>.
          Simpan kode ini bila peneliti memintanya.</p>`;
