@@ -505,6 +505,13 @@ async function finish(){
     jsPsych.data.get().filter({ trial_type: "pipe" }).values()
       .some(d => d.success === true);
 
+  // Catatan diagnosis: tampilkan balasan mentah DataPipe di konsol (F12).
+  try {
+    console.log("[IAT] respons DataPipe:",
+      JSON.stringify(jsPsych.data.get().filter({ trial_type: "pipe" }).values()
+        .map(d => ({ success: d.success, result: d.result, error: d.error, message: d.message }))));
+  } catch(e) {}
+
   // Jalur 2: Google Sheets. "tersimpan" = server membalas ok;
   // "terkirim" = dikirim tanpa bisa membaca balasan.
   const sheetStatus = await sendToGoogle();   // skip | tersimpan | terkirim | gagal
