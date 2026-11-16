@@ -103,8 +103,15 @@ const CONFIG = {
         Jangan lupa menyalakan "Enable data collection" di dasbor DataPipe.
      2) Google Sheets lewat Apps Script. Isi URL yang berakhiran /exec.
      Bila keduanya kosong, partisipan cukup mengunduh berkas CSV.         */
-  dataPipeId: "",
-  googleScriptURL: "https://script.google.com/macros/s/AKfycbwR3x2zUSN34o6RK0vwldUpf0_E0gxEq81UMKaUBd_KKk4KJxITnbBpVB_sPLB1wYjp/exec",
+  dataPipeId: "Ux7ZQHWULJ74",
+  googleScriptURL: "",
+
+  /* 3) Google Form sebagai penerima data (disarankan bila Apps Script
+        bermasalah). Isi dengan keluaran skrip buat_form_penerima.gs:
+        { url: "https://docs.google.com/forms/d/e/....../formResponse",
+          entries: ["entry.111", "entry.222", "entry.333", "entry.444"] }
+        entries[0] = kode partisipan, entries[1..3] = potongan data.     */
+  formReceiver: null,
 
   /* --- SINKRONISASI DENGAN GOOGLE FORM ---
      Tempel di sini POLA PREFILLED yang dicetak skrip buat_google_form.gs
@@ -443,7 +450,28 @@ function downloadCSV(){
    balasan, kiriman diulang secara "buta" (no-cors) dan statusnya hanya
    "terkirim". Pengulangan itu aman karena Apps Script menyimpan satu kode
    partisipan sekali saja. */
+/* Pengiriman ke Google Form. Formulir menerima kiriman dari halaman mana
+   pun tanpa login, tetapi balasannya tidak dapat dibaca peramban, sehingga
+   statusnya paling jauh "terkirim". Buktinya ada di lembar respons Form.
+   Data CSV dipotong menjadi paling banyak 3 bagian agar tiap kolom jauh di
+   bawah batas sekitar 32.000 karakter. */
+async function sendToForm(){
+  const fr = CONFIG.formReceiver;
+  try {
+    const csv = toCSV(rows());
+    const MAKS = 28000, n = fr.entries.length - 1;
+    if (csv.length > MAKS * n) return "gagal";
+    const params = new URLSearchParams();
+    params.append(fr.entries[0], KODE);
+    for (let i = 0; i < n; i++) params.append(fr.entries[i + 1], csv.slice(i * MAKS, (i + 1) * MAKS));
+    await fetch(fr.url, { method: "POST", mode: "no-cors",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: params.toString() });
+    return "terkirim";
+  } catch(e) { return "gagal"; }
+}
+
 async function sendToGoogle(){
+  if (CONFIG.formReceiver && CONFIG.formReceiver.url) return await sendToForm();
   if (!CONFIG.googleScriptURL) return "skip";
   const v = jsPsych.data.get().values()[0] || {};
   const body = JSON.stringify({
