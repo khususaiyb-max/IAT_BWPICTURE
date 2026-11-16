@@ -81,7 +81,7 @@
   .cat-a{ color:var(--attr); }
 
   /* stimulus */
-  #jspsych-iat-stim{ font-size:2.4rem; font-weight:700; }
+  #jspsych-iat-stim{ font-size:2.4rem; font-weight:700; text-align:center !important; margin:0; width:100%; }
   #jspsych-iat-stim.s-t{ color:var(--target); text-transform:uppercase; letter-spacing:.04em; }
   #jspsych-iat-stim.s-a{ color:var(--attr); text-transform:lowercase; }
   #wrongImgID p{ font-size:.9rem; color:var(--muted); }
@@ -428,7 +428,7 @@ function rows(){
     category_code: d.category_code, stim_type: d.stim_type,
     correct_key: d.correct_key, first_key: d.response,
     error: d.error, rt_first: d.rt_first, rt: d.rt,
-    timestamp: new Date(d.time_elapsed).toISOString()
+    timestamp: new Date(Date.now() - jsPsych.getTotalTime() + d.time_elapsed).toISOString()
   }));
 }
 function toCSV(rs){
