@@ -340,7 +340,7 @@ const demografi = {
     jsPsych.data.addProperties({
       study: CONFIG.studyName,
       participant_id: KODE,
-      age: r.age, gender: r.gender, province: r.prov,
+      age: r.age, gender: r.gender, province: String(r.prov || "").trim(),
       order: ORDER, side: SIDE, version: VERSION
     });
   }
